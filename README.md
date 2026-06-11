@@ -1,16 +1,13 @@
 # Homelab
 
-Personal home platform running on a local network (Raspberry Pi). Serves multiple modules under a single domain — recipes, dance practice, irrigation, cameras, and more.
+Personal home platform running on a local network (Raspberry Pi). Serves multiple modules under a single domain — recipes, and more to come.
 
 Built as both a useful home tool and a software engineering portfolio project showcasing: React, Spring Boot, PostgreSQL, Docker, GitHub Actions, Ansible, and Nginx.
 
 ## Modules
 | Module | Path | Status |
 |---|---|---|
-| Recipes | `/recipes` | Planned |
-| Dance | `/dance` | Planned |
-| Irrigation | `/irrigation` | Planned |
-| Cameras | `/cameras` | Planned |
+| Recipes | `/recipes` | In progress |
 
 ## Stack
 - **Frontend:** React + TypeScript + Vite
