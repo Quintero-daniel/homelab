@@ -1,0 +1,62 @@
+---
+description: Homelab project brief — vision, stack, structure, and current state
+alwaysApply: true
+---
+
+# Homelab — Project Brief
+
+## What This Is
+A personal home platform (homelab) running on a local network (Raspberry Pi), built by a software engineer as both a useful home tool and a portfolio piece demonstrating full-stack skills: frontend, backend, database, CI/CD, Docker, Ansible, and more.
+
+**Users:** household members + anyone on the local network. No auth required initially.
+
+## End Goal
+A single local domain serving multiple modules as separate routes/sections:
+- `/recipes` — Recipe manager with a weekly randomizer
+- More to come — this is an evolving platform
+
+## Tech Stack & Decisions
+
+| Layer | Choice | Rationale |
+|---|---|---|
+| Frontend | React + TypeScript + Vite | Adds React to portfolio (Angular already used at day job) |
+| Backend | Spring Boot + Spring Data JPA + Flyway | Simpler than manual Jetty/Guice/MyBatis stack — comparison between the two is an interview talking point |
+| Database | PostgreSQL | Relational, robust, already familiar |
+| Containers | Docker + Docker Compose | Most recognized, community resources |
+| Reverse Proxy | Nginx | Routes modules by path under one local domain |
+| CI/CD | GitHub Actions + self-hosted runner on Pi | Free, widely recognized by employers, Pi does the actual build/deploy |
+| Deployment | Ansible | Provisions and deploys to Raspberry Pi |
+| Repo style | Monorepo | All modules under one repo |
+
+## Repository Structure
+```
+homelab/
+├── frontend/           # React + TypeScript + Vite
+├── backend/            # Spring Boot API
+├── infra/
+│   ├── ansible/        # Pi provisioning + deployment playbooks
+│   └── docker/         # Docker Compose files
+└── .github/
+    └── workflows/      # GitHub Actions CI/CD pipelines
+```
+
+## Key Constraints
+- **Local network only** for now (may go public later — design with that possibility in mind)
+- **All tools must be free / open source**
+- **Runs on Raspberry Pi** (ARM architecture — ensure Docker images are multi-arch or ARM-compatible)
+- No authentication required initially
+
+## Current State
+- [ ] Repo scaffolded, folder structure in place
+- [ ] Module 1: Recipes (in progress)
+
+## Development Approach
+Work incrementally — one module or one layer at a time. Each chunk should be functional and deployable before moving to the next. Update this rule's **Current State** section after each meaningful milestone.
+
+**Working style:**
+- Work in small, focused pieces — easier to review and verify correctness
+- **Always prompt for confirmation before creating or editing any file.** Present what you plan to do and wait for explicit approval before making changes.
+
+## Background Context
+- Developer's day job stack: Angular + Jersey + Guice + MyBatis — intentionally using different choices here (React, Spring Boot) to broaden portfolio
+- An existing manual Java project at `~/Development/daniApp` mirrors the day job stack and serves as a reference/comparison
