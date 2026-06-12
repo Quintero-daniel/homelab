@@ -1,0 +1,34 @@
+package com.homelab.model;
+
+import jakarta.persistence.*;
+import java.util.UUID;
+
+@Entity
+@Table(name = "directions")
+public class Direction {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @ManyToOne
+    @JoinColumn(name = "recipe_id", nullable = false)
+    private Recipe recipe;
+
+    @Column(nullable = false)
+    private Integer stepNumber;
+
+    @Column(nullable = false)
+    private String description;
+
+    public UUID getId() { return id; }
+
+    public Recipe getRecipe() { return recipe; }
+    public void setRecipe(Recipe recipe) { this.recipe = recipe; }
+
+    public Integer getStepNumber() { return stepNumber; }
+    public void setStepNumber(Integer stepNumber) { this.stepNumber = stepNumber; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+}
