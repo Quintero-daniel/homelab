@@ -1,5 +1,6 @@
 package com.homelab.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,12 +23,15 @@ public class Recipe {
 
     private String pictureUrl;
 
+    @JsonManagedReference("recipe-ingredients")
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecipeIngredient> ingredients = new ArrayList<>();
 
+    @JsonManagedReference("recipe-nutritional-factors")
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecipeNutritionalFactor> nutritionalFactors = new ArrayList<>();
 
+    @JsonManagedReference("recipe-directions")
     @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("stepNumber ASC")
     private List<Direction> directions = new ArrayList<>();

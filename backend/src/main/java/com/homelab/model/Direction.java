@@ -1,5 +1,6 @@
 package com.homelab.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import java.util.UUID;
 
@@ -11,6 +12,7 @@ public class Direction {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @JsonBackReference("recipe-directions")
     @ManyToOne
     @JoinColumn(name = "recipe_id", nullable = false)
     private Recipe recipe;

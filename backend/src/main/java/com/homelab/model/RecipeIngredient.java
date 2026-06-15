@@ -1,5 +1,6 @@
 package com.homelab.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -12,6 +13,7 @@ public class RecipeIngredient {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @JsonBackReference("recipe-ingredients")
     @ManyToOne
     @JoinColumn(name = "recipe_id", nullable = false)
     private Recipe recipe;
