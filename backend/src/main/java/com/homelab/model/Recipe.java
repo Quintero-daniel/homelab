@@ -19,7 +19,7 @@ public class Recipe {
 
     private String description;
 
-    private Integer rating;
+    private Short rating;
 
     private String pictureUrl;
 
@@ -44,8 +44,8 @@ public class Recipe {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    public Integer getRating() { return rating; }
-    public void setRating(Integer rating) { this.rating = rating; }
+    public Short getRating() { return rating; }
+    public void setRating(Short rating) { this.rating = rating; }
 
     public String getPictureUrl() { return pictureUrl; }
     public void setPictureUrl(String pictureUrl) { this.pictureUrl = pictureUrl; }

@@ -18,7 +18,7 @@ public class Direction {
     private Recipe recipe;
 
     @Column(nullable = false)
-    private Integer stepNumber;
+    private Short stepNumber;
 
     @Column(nullable = false)
     private String description;
@@ -28,8 +28,8 @@ public class Direction {
     public Recipe getRecipe() { return recipe; }
     public void setRecipe(Recipe recipe) { this.recipe = recipe; }
 
-    public Integer getStepNumber() { return stepNumber; }
-    public void setStepNumber(Integer stepNumber) { this.stepNumber = stepNumber; }
+    public Short getStepNumber() { return stepNumber; }
+    public void setStepNumber(Short stepNumber) { this.stepNumber = stepNumber; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
