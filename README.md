@@ -33,6 +33,22 @@ The backend follows a layered architecture pattern, exposing a REST API consumed
 
 Each layer has a single responsibility and only communicates with the layer directly below it. The frontend has no knowledge of the backend's internal structure — it only consumes JSON responses.
 
+## Local Development
+
+**1. Start the database:**
+```bash
+cd infra/docker
+docker compose up -d
+```
+
+**2. Run the backend:**
+```bash
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+> Requires a `backend/src/main/resources/application-local.properties` file with your local DB credentials (see `.env.example` in `infra/docker/`).
+
 ## Structure
 ```
 homelab/
