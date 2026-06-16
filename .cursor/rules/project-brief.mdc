@@ -47,8 +47,14 @@ homelab/
 - No authentication required initially
 
 ## Current State
-- [ ] Repo scaffolded, folder structure in place
+- [x] Repo scaffolded, folder structure in place
 - [ ] Module 1: Recipes (in progress)
+  - [x] PostgreSQL via Docker Compose
+  - [x] Flyway migration — initial schema (recipes, ingredients, directions, nutritional factors)
+  - [x] Spring Boot backend — entities, repositories, service, controller (full CRUD for recipes)
+  - [ ] React frontend
+  - [ ] Nginx reverse proxy
+  - [ ] Docker Compose — full stack
 
 ## Development Approach
 Work incrementally — one module or one layer at a time. Each chunk should be functional and deployable before moving to the next. Update this rule's **Current State** section after each meaningful milestone.
