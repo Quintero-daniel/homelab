@@ -49,6 +49,14 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 > Requires a `backend/src/main/resources/application-local.properties` file with your local DB credentials (see `.env.example` in `infra/docker/`).
 
+**3. Run the frontend:**
+```bash
+cd frontend
+npm run dev
+```
+
+Frontend runs on `http://localhost:5173`. API calls to `/api` are proxied to the backend on port `8080`.
+
 ## Structure
 ```
 homelab/
