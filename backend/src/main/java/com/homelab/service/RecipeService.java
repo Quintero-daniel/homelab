@@ -45,6 +45,11 @@ public class RecipeService {
     }
 
     public Recipe updateRecipe(UUID id, Recipe updated) {
+        // Resolve references before loading the managed entity to avoid
+        // TransientObjectException during Hibernate auto-flush.
+        resolveIngredients(updated);
+        resolveNutritionalFactors(updated);
+
         Recipe existing = getRecipeById(id);
 
         existing.setName(updated.getName());
@@ -63,9 +68,6 @@ public class RecipeService {
         existing.getDirections().clear();
         existing.getDirections().addAll(updated.getDirections());
         existing.getDirections().forEach(d -> d.setRecipe(existing));
-
-        resolveIngredients(existing);
-        resolveNutritionalFactors(existing);
 
         return recipeRepository.save(existing);
     }

@@ -53,3 +53,18 @@ export async function getRecipeById(id: string): Promise<Recipe> {
   if (!response.ok) throw new Error(`Failed to fetch recipe ${id}`)
   return response.json()
 }
+
+export async function deleteRecipe(id: string): Promise<void> {
+  const response = await fetch(`${BASE_URL}/${id}`, { method: 'DELETE' })
+  if (!response.ok) throw new Error(`Failed to delete recipe ${id}`)
+}
+
+export async function updateRecipe(id: string, recipe: Recipe): Promise<Recipe> {
+  const response = await fetch(`${BASE_URL}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(recipe),
+  })
+  if (!response.ok) throw new Error(`Failed to update recipe ${id}`)
+  return response.json()
+}

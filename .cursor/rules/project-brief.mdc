@@ -48,14 +48,23 @@ homelab/
 
 ## Current State
 - [x] Repo scaffolded, folder structure in place
-- [ ] Module 1: Recipes (in progress)
+- [x] Module 1: Recipes — functional
   - [x] PostgreSQL via Docker Compose
   - [x] Flyway migration — initial schema (recipes, ingredients, directions, nutritional factors)
-  - [x] Spring Boot backend — entities, repositories, service, controller (full CRUD for recipes)
+  - [x] Spring Boot backend — entities, repositories, service, controller (full CRUD)
   - [x] React frontend — scaffolded, routing, API client connected to backend
-  - [ ] Recipes UI — list, detail, create, edit/delete
-  - [ ] Nginx reverse proxy
-  - [ ] Docker Compose — full stack
+  - [x] Recipes UI — accordion list, detail view (description + picture + ingredients + nutrition + directions)
+  - [x] Randomize recipe feature
+  - [x] Inline edit mode — name, description, rating, ingredients, nutritional factors, directions
+  - [x] Delete recipe with confirmation
+  - [x] Nutritional factor cards with icon + divider layout
+  - [ ] Add new recipe (button placeholder exists, form not yet implemented)
+  - [ ] Recipe picture upload (currently URL-based only)
+- [ ] Deployment
+  - [ ] Dockerfiles — backend and frontend
+  - [ ] Docker Compose — full stack (backend + frontend + PostgreSQL + Nginx)
+  - [ ] Ansible — Pi provisioning playbook
+  - [ ] GitHub Actions — CI/CD pipeline with self-hosted runner on Pi
 
 ## Development Approach
 Work incrementally — one module or one layer at a time. Each chunk should be functional and deployable before moving to the next. Update this rule's **Current State** section after each meaningful milestone.

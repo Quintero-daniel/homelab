@@ -7,7 +7,7 @@ Built as both a useful home tool and a software engineering portfolio project sh
 ## Modules
 | Module | Path | Status |
 |---|---|---|
-| Recipes | `/recipes` | In progress |
+| Recipes | `/recipes` | Functional — CRUD complete |
 
 ## Stack
 - **Frontend:** React + TypeScript + Vite
@@ -32,6 +32,31 @@ The backend follows a layered architecture pattern, exposing a REST API consumed
 ```
 
 Each layer has a single responsibility and only communicates with the layer directly below it. The frontend has no knowledge of the backend's internal structure — it only consumes JSON responses.
+
+## Recipes Module
+
+The first module — a full recipe manager accessible from the home page at `/recipes`.
+
+**Features:**
+- Accordion list of recipes; selecting one moves it to the top and expands the detail view
+- Detail view shows: title with star rating, description + picture side by side, and a three-column panel (nutritional factors / ingredients / directions)
+- Nutritional factors rendered as icon cards (emoji mapped by factor name) with a centre divider showing amount and unit
+- Randomize button picks a random recipe and brings it to the top
+- Full inline edit mode: name, description, star rating, plus editable lists for ingredients (name, quantity, unit, notes), nutritional factors (name, amount, unit), and directions (numbered, reorderable)
+- Delete with confirmation prompt
+- Empty rows are filtered out on save; new items are created by the backend, existing ones are updated in place
+
+**Backend (REST API — `/api/recipes`):**
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/recipes` | List all recipes |
+| GET | `/api/recipes/{id}` | Get recipe by ID |
+| POST | `/api/recipes` | Create recipe |
+| PUT | `/api/recipes/{id}` | Full update (replaces nested collections) |
+| DELETE | `/api/recipes/{id}` | Delete recipe |
+
+Ingredients and nutritional factors are resolved by name (find-or-create) on every write, so the same ingredient is never duplicated across recipes.
 
 ## Local Development
 
