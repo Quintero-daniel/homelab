@@ -8,15 +8,19 @@ FROM node:20-alpine AS build
 # Set the working directory inside the container for all subsequent commands.
 WORKDIR /app
 
-# Copy only the package descriptor files first.
-# Same layer-caching strategy as the backend: if these files haven't changed,
-# Docker skips the npm install on the next build — saves significant time.
-COPY package*.json ./
-
-# Install exact dependency versions from package-lock.json.
-# 'ci' (clean install) is preferred over 'install' in automated environments:
-# it's faster, stricter, and fails if package-lock.json is out of sync.
-RUN npm ci
+# Copy only package.json (not package-lock.json) for the dependency install step.
+# The layer-caching benefit still applies: if package.json hasn't changed,
+# Docker reuses the cached layer and skips the install entirely.
+#
+# We intentionally omit package-lock.json here because Vite 8 uses rolldown,
+# a Rust-based bundler with platform-specific native binaries distributed as
+# optional npm packages (e.g. @rolldown/binding-linux-arm64-musl). The lock
+# file is generated on macOS and records the darwin binary; if it is present
+# inside the container, npm honours those resolutions and the linux/musl binary
+# is never downloaded — causing the build to fail. Without the lock file, npm
+# resolves optional dependencies fresh for the current OS.
+COPY package.json ./
+RUN npm install
 
 # Copy the rest of the source code now that dependencies are installed.
 COPY . .

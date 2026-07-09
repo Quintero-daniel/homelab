@@ -27,10 +27,12 @@ RUN mvn package -DskipTests -B
 
 # ── Stage 2: Run ──────────────────────────────────────────────────────────────
 
-# Fresh base image for the runtime stage: Eclipse Temurin JRE (not JDK) on Alpine Linux.
+# Fresh base image for the runtime stage: Eclipse Temurin JRE (not JDK).
 # JRE = Java Runtime only — no compiler, no Maven, significantly smaller image.
-# Alpine = minimal Linux distribution (~5 MB base), keeps the final image lean.
-FROM eclipse-temurin:17-jre-alpine
+# Using the standard Debian-based variant instead of Alpine because the Alpine
+# variant of Temurin 17 does not publish an ARM64 image — which is required for
+# both Apple Silicon (local dev) and the Raspberry Pi (production).
+FROM eclipse-temurin:17-jre
 
 # Working directory for the running application.
 WORKDIR /app
