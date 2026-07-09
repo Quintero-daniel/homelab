@@ -1,16 +1,76 @@
 services:
+
+  # ── Database ────────────────────────────────────────────────────────────────
   db:
+    # Official PostgreSQL image, pinned to the exact same version used in local dev.
     image: postgres:17.9
     container_name: homelab-db
     environment:
+      # These three variables are read by the official Postgres image on first start
+      # to create the database, user, and password. Values come from the .env file.
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
+      # Maps host port 5433 → container port 5432.
+      # Kept so local dev tools (e.g. running the backend outside Docker) can
+      # still reach the DB directly. The backend container uses port 5432 internally.
       - "5433:5432"
     volumes:
+      # Named volume so the database survives container restarts and rebuilds.
+      # Without this, all data would be lost every time the container stops.
       - db_data:/var/lib/postgresql/data
     restart: unless-stopped
+    healthcheck:
+      # Polls pg_isready every 5 seconds to confirm Postgres is actually accepting
+      # connections — not just that the process has started.
+      # Other services use 'depends_on: condition: service_healthy' to wait for this.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
+  # ── Backend ─────────────────────────────────────────────────────────────────
+  backend:
+    # Build the image from the backend Dockerfile rather than pulling a pre-built one.
+    # 'context' is the directory sent to Docker as the build context (maps to COPY paths).
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    container_name: homelab-backend
+    environment:
+      # These override the default values in application.properties.
+      # DB_HOST uses 'db' — the service name above, which Docker resolves via
+      # its internal DNS. DB_PORT is 5432 (internal), not 5433 (host-mapped).
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        # Don't start the backend until the db healthcheck passes.
+        # Prevents Spring Boot from crashing on startup because Postgres isn't ready.
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    container_name: homelab-frontend
+    ports:
+      # The only service that exposes a port to the outside world.
+      # Host port 80 → container port 80 (Nginx).
+      # Backend and DB are reachable only within Docker's internal network.
+      - "80:80"
+    depends_on:
+      # Wait for the backend to be started before bringing up the frontend.
+      # Note: 'started' only (not healthy) — we don't have a backend healthcheck yet.
+      - backend
+    restart: unless-stopped
+
+# Named volumes are managed by Docker and persist across container lifecycles.
 volumes:
   db_data:
