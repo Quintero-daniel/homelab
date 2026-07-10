@@ -2,8 +2,8 @@
 #
 # Difference from docker-compose.yml: services use pre-built images pulled from
 # GitHub Container Registry (GHCR) instead of building from local source.
-# Images are pushed to GHCR by the GitHub Actions CI/CD pipeline on every push
-# to main. Replace YOUR_GITHUB_USERNAME with your actual GitHub username.
+# Images are built and pushed to GHCR manually from your Mac (see README),
+# then pulled here by Ansible when deploying to the Pi.
 
 services:
 
@@ -28,7 +28,7 @@ services:
   # ── Backend ─────────────────────────────────────────────────────────────────
   backend:
     # Pull the pre-built image from GHCR instead of building from source.
-    image: ghcr.io/Quintero-daniel/homelab-backend:latest
+    image: ghcr.io/quintero-daniel/homelab-backend:latest
     container_name: homelab-backend
     environment:
       DB_HOST: db
@@ -44,7 +44,7 @@ services:
   # ── Frontend ─────────────────────────────────────────────────────────────────
   frontend:
     # Pull the pre-built image from GHCR instead of building from source.
-    image: ghcr.io/Quintero-daniel/homelab-frontend:latest
+    image: ghcr.io/quintero-daniel/homelab-frontend:latest
     container_name: homelab-frontend
     ports:
       - "80:80"
