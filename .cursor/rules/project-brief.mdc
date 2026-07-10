@@ -6,7 +6,7 @@ alwaysApply: true
 # Homelab — Project Brief
 
 ## What This Is
-A personal home platform (homelab) running on a local network (Raspberry Pi), built by a software engineer as both a useful home tool and a portfolio piece demonstrating full-stack skills: frontend, backend, database, CI/CD, Docker, Ansible, and more.
+A personal home platform (homelab) running on a local network (Raspberry Pi), built by a software engineer as both a useful home tool and a portfolio piece demonstrating full-stack skills: frontend, backend, database, Docker, Ansible, and more.
 
 **Users:** household members + anyone on the local network. No auth required initially.
 
@@ -24,8 +24,8 @@ A single local domain serving multiple modules as separate routes/sections:
 | Database | PostgreSQL | Relational, robust, already familiar |
 | Containers | Docker + Docker Compose | Most recognized, community resources |
 | Reverse Proxy | Nginx | Routes modules by path under one local domain |
-| CI/CD | GitHub Actions + self-hosted runner on Pi | Free, widely recognized by employers, Pi does the actual build/deploy |
-| Deployment | Ansible | Provisions and deploys to Raspberry Pi |
+| Image Registry | GitHub Container Registry (GHCR) | Free, built into GitHub; images built on Mac and pushed manually |
+| Deployment | Ansible | Provisions Pi and deploys the stack (pulls images from GHCR) |
 | Repo style | Monorepo | All modules under one repo |
 
 ## Repository Structure
@@ -33,11 +33,9 @@ A single local domain serving multiple modules as separate routes/sections:
 homelab/
 ├── frontend/           # React + TypeScript + Vite
 ├── backend/            # Spring Boot API
-├── infra/
-│   ├── ansible/        # Pi provisioning + deployment playbooks
-│   └── docker/         # Docker Compose files
-└── .github/
-    └── workflows/      # GitHub Actions CI/CD pipelines
+└── infra/
+    ├── ansible/        # Pi provisioning + deployment playbooks
+    └── docker/         # Docker Compose files (local dev + production)
 ```
 
 ## Key Constraints
@@ -60,11 +58,13 @@ homelab/
   - [x] Nutritional factor cards with icon + divider layout
   - [ ] Add new recipe (button placeholder exists, form not yet implemented)
   - [ ] Recipe picture upload (currently URL-based only)
-- [ ] Deployment
-  - [ ] Dockerfiles — backend and frontend
-  - [ ] Docker Compose — full stack (backend + frontend + PostgreSQL + Nginx)
-  - [ ] Ansible — Pi provisioning playbook
-  - [ ] GitHub Actions — CI/CD pipeline with self-hosted runner on Pi
+- [x] Deployment
+  - [x] Dockerfiles — backend and frontend (multi-stage builds)
+  - [x] Docker Compose — local dev (builds from source) + production (pulls from GHCR)
+  - [x] Nginx config — serves React SPA, proxies /api to backend
+  - [x] Ansible — Pi provisioning playbook (installs Docker, copies compose file, pulls images, starts stack)
+  - [x] Images pushed to GHCR — `ghcr.io/quintero-daniel/homelab-backend:latest` and `homelab-frontend:latest`
+  - [x] Stack running on Raspberry Pi 5 — accessible at `http://192.168.20.22/`
 
 ## Development Approach
 Work incrementally — one module or one layer at a time. Each chunk should be functional and deployable before moving to the next. Update this rule's **Current State** section after each meaningful milestone.
