@@ -62,9 +62,9 @@ homelab/
   - [x] Dockerfiles — backend and frontend (multi-stage builds)
   - [x] Docker Compose — local dev (builds from source) + production (pulls from GHCR)
   - [x] Nginx config — serves React SPA, proxies /api to backend
-  - [x] Ansible — Pi provisioning playbook (installs Docker, copies compose file, pulls images, starts stack)
+  - [x] Ansible — Pi provisioning playbook (installs Docker, fixes DNS via NetworkManager + resolv.conf, copies compose file, logs into GHCR, pulls images, starts stack)
   - [x] Images pushed to GHCR — `ghcr.io/quintero-daniel/homelab-backend:latest` and `homelab-frontend:latest`
-  - [x] Stack running on Raspberry Pi 5 — accessible at `http://192.168.20.22/`
+  - [x] Stack running on Raspberry Pi 5 — accessible at `http://<pi-ip>/`
 
 ## Development Approach
 Work incrementally — one module or one layer at a time. Each chunk should be functional and deployable before moving to the next. Update this rule's **Current State** section after each meaningful milestone.

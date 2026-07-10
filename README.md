@@ -136,7 +136,7 @@ podman push ghcr.io/quintero-daniel/homelab-frontend:latest
 - Raspbian installed on the Pi with SSH enabled
 - SSH key copied to the Pi: `ssh-copy-id acme@<pi-ip>`
 - Ansible installed on your Mac: `brew install ansible`
-- `infra/ansible/inventory.ini` updated with the Pi's IP address
+- `infra/ansible/inventory.ini` updated with the Pi's IP and user (`acme`)
 
 **Test connectivity:**
 ```bash
@@ -151,17 +151,19 @@ ssh acme@<pi-ip> "nano ~/homelab/.env"  # fill in real values
 
 **Run the playbook:**
 ```bash
-ansible-playbook -i infra/ansible/inventory.ini infra/ansible/playbook.yml
+ansible-playbook -i infra/ansible/inventory.ini infra/ansible/playbook.yml \
+  --extra-vars "ghcr_token=YOUR_CLASSIC_PAT_HERE"
 ```
 
-The playbook installs Docker, copies the production compose file, pulls the images from GHCR, and starts the stack. If no `.env` is found on the Pi it prints a warning and skips the pull + start steps.
+The token is passed at runtime and never stored in any file. The playbook installs Docker, logs into GHCR on the Pi, copies the production compose file, pulls the images, and starts the stack. If no `.env` is found on the Pi it prints a warning and skips the pull + start steps.
 
 ### Deploying updates
 
 After pushing new images (Step 2), re-run the playbook to pull and restart the stack on the Pi:
 
 ```bash
-ansible-playbook -i infra/ansible/inventory.ini infra/ansible/playbook.yml
+ansible-playbook -i infra/ansible/inventory.ini infra/ansible/playbook.yml \
+  --extra-vars "ghcr_token=YOUR_CLASSIC_PAT_HERE"
 ```
 
 > **Production vs local compose:**

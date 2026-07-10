@@ -4,11 +4,13 @@
 # What this playbook does, in order:
 #   1. Installs Docker Engine via the official convenience script
 #   2. Installs the Docker Compose plugin (so 'docker compose' works)
-#   3. Adds the SSH user to the 'docker' group (no sudo needed for docker commands)
-#   4. Creates the app directory on the Pi
-#   5. Copies docker-compose.prod.yml to the Pi
-#   6. Pulls the latest images from GHCR and starts the stack
-#      (step 6 is skipped if no .env file is present — see note below)
+#   3. Configures Docker DNS (daemon.json) and system DNS (NetworkManager +
+#      resolv.conf) so the Pi can resolve external registries like ghcr.io reliably
+#   4. Adds the SSH user to the 'docker' group (no sudo needed for docker commands)
+#   5. Creates the app directory on the Pi
+#   6. Copies docker-compose.prod.yml to the Pi
+#   7. Logs in to GHCR and pulls the latest images, then starts the stack
+#      (step 7 is skipped if no .env file is present — see note below)
 #
 # Prerequisites:
 #   - SSH access to the Pi: ssh acme@<pi-ip> must work from your Mac
@@ -16,10 +18,11 @@
 #     Create it manually on the Pi first:
 #       scp infra/docker/.env.example acme@<pi-ip>:~/homelab/.env
 #       ssh acme@<pi-ip> "nano ~/homelab/.env"  # fill in real values
-#   - Images must be pushed to GHCR (done by GitHub Actions) before pulling.
+#   - Images must be pushed to GHCR from your Mac (see README) before pulling.
 #
 # Run this playbook from the repo root:
-#   ansible-playbook -i infra/ansible/inventory.ini infra/ansible/playbook.yml
+#   ansible-playbook -i infra/ansible/inventory.ini infra/ansible/playbook.yml \
+#     --extra-vars "ghcr_token=YOUR_CLASSIC_PAT_HERE"
 # To test connectivity first:
 #   ansible -i infra/ansible/inventory.ini acme -m ping
 
@@ -54,10 +57,51 @@
         state: present
         update_cache: true
 
+    - name: Configure Docker DNS
+      # Docker uses its own DNS resolver which may not inherit the system's DNS.
+      # This sets explicit public DNS servers so the Docker daemon can resolve
+      # external hostnames like ghcr.io for image pulls.
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "dns": ["8.8.8.8", "1.1.1.1"]
+          }
+        mode: "0644"
+      notify: Restart Docker
+
+    - name: Stop NetworkManager from managing resolv.conf
+      # By default NetworkManager overwrites /etc/resolv.conf on every network
+      # change, which would revert our custom DNS. Setting dns=none tells NM to
+      # leave resolv.conf alone so our settings persist across reboots.
+      copy:
+        dest: /etc/NetworkManager/conf.d/custom-dns.conf
+        content: |
+          [main]
+          dns=none
+        mode: "0644"
+      notify: Reload NetworkManager config
+
+    - name: Write resolv.conf with reliable public DNS servers
+      # Direct write is safe here because NetworkManager is configured above
+      # to no longer touch this file.
+      copy:
+        dest: /etc/resolv.conf
+        content: |
+          nameserver 8.8.8.8
+          nameserver 1.1.1.1
+        mode: "0644"
+
+    - name: Flush handlers to apply DNS config before continuing
+      # Forces the NetworkManager reload and Docker restart to run NOW so DNS
+      # is working before the login and pull tasks attempt to reach ghcr.io.
+      meta: flush_handlers
+
     - name: Add SSH user to the docker group
       # Without this, every docker command requires sudo.
-      # The change takes effect on the next login — the playbook handles this
-      # by using 'become_user' for docker commands below.
+      # Note: group membership only takes effect on the next login session.
+      # Docker tasks in this playbook run as root (become: true) so they work
+      # immediately without needing the group to be active.
       user:
         name: "{{ ansible_user }}"
         groups: docker
@@ -87,6 +131,17 @@
         group: "{{ ansible_user }}"
         mode: "0644"
 
+    # ── GHCR Authentication ──────────────────────────────────────────────────
+
+    - name: Log in to GHCR
+      # Authenticates Docker on the Pi so it can pull private images.
+      # The token is passed at runtime via --extra-vars and never stored in this file.
+      # no_log: true prevents the token from appearing in Ansible's output.
+      # Runs as root (become: true is set at the play level) so docker group
+      # membership is not required — group changes only take effect on new logins.
+      shell: echo "{{ ghcr_token }}" | docker login ghcr.io -u quintero-daniel --password-stdin
+      no_log: true
+
     # ── Stack Deployment ─────────────────────────────────────────────────────
 
     - name: Check if .env file exists on the Pi
@@ -105,11 +160,10 @@
 
     - name: Pull latest images from GHCR
       # Pulls all images declared in docker-compose.yml from the registry.
-      # Requires images to have been pushed by the GitHub Actions pipeline first.
+      # Requires images to have been pushed from your Mac first (see README).
       shell: docker compose pull
       args:
         chdir: /home/{{ ansible_user }}/homelab
-      become_user: "{{ ansible_user }}"
       when: env_file.stat.exists
 
     - name: Start the stack
@@ -118,5 +172,18 @@
       shell: docker compose up -d
       args:
         chdir: /home/{{ ansible_user }}/homelab
-      become_user: "{{ ansible_user }}"
       when: env_file.stat.exists
+
+  # Handlers run once at the end of the play, or immediately when flush_handlers
+  # is called. Each handler only runs if it was notified by a task that changed.
+  handlers:
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted
+
+    - name: Reload NetworkManager config
+      # 'nmcli general reload' reloads NetworkManager's configuration files
+      # without restarting the service or dropping network connections.
+      # This picks up the dns=none setting so NM stops overwriting resolv.conf.
+      shell: nmcli general reload
