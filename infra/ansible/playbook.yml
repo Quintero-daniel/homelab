@@ -1,0 +1,122 @@
+---
+# Homelab — Raspberry Pi Provisioning Playbook
+#
+# What this playbook does, in order:
+#   1. Installs Docker Engine via the official convenience script
+#   2. Installs the Docker Compose plugin (so 'docker compose' works)
+#   3. Adds the SSH user to the 'docker' group (no sudo needed for docker commands)
+#   4. Creates the app directory on the Pi
+#   5. Copies docker-compose.prod.yml to the Pi
+#   6. Pulls the latest images from GHCR and starts the stack
+#      (step 6 is skipped if no .env file is present — see note below)
+#
+# Prerequisites:
+#   - SSH access to the Pi: ssh pi@<pi-ip> must work from your Mac
+#   - The Pi must have a .env file at ~/homelab/.env before step 6 runs.
+#     Create it manually on the Pi first:
+#       scp infra/docker/.env.example pi@<pi-ip>:~/homelab/.env
+#       ssh pi@<pi-ip> "nano ~/homelab/.env"  # fill in real values
+#   - Images must be pushed to GHCR (done by GitHub Actions) before pulling.
+#
+# Run this playbook from the repo root:
+#   ansible-playbook -i infra/ansible/inventory.ini infra/ansible/playbook.yml
+# To test connectivity first:
+#   ansible -i infra/ansible/inventory.ini acme -m ping
+
+- name: Provision Raspberry Pi
+  hosts: acme
+  # become: true runs tasks with sudo. Individual tasks that should NOT run as
+  # root use 'become_user' to drop back to the SSH user.
+  become: true
+
+  tasks:
+
+    # ── Docker Installation ──────────────────────────────────────────────────
+
+    - name: Check if Docker is already installed
+      # We check first so we don't re-run the install script on every run.
+      command: docker --version
+      register: docker_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install Docker via the official convenience script
+      # The official script detects the OS and installs the correct packages.
+      # Equivalent to running: curl -fsSL https://get.docker.com | sh
+      shell: curl -fsSL https://get.docker.com | sh
+      when: docker_check.rc != 0
+
+    - name: Install docker-compose-plugin
+      # This provides the 'docker compose' (with a space) command.
+      # It is separate from the legacy 'docker-compose' (with a hyphen) binary.
+      apt:
+        name: docker-compose-plugin
+        state: present
+        update_cache: true
+
+    - name: Add SSH user to the docker group
+      # Without this, every docker command requires sudo.
+      # The change takes effect on the next login — the playbook handles this
+      # by using 'become_user' for docker commands below.
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: true
+
+    # ── App Directory ────────────────────────────────────────────────────────
+
+    - name: Create app directory on the Pi
+      # This is where docker-compose.yml and .env will live on the Pi.
+      file:
+        path: /home/{{ ansible_user }}/homelab
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+
+    # ── Deploy Files ─────────────────────────────────────────────────────────
+
+    - name: Copy docker-compose.prod.yml to the Pi
+      # Copies the production compose file (uses GHCR image refs, not build).
+      # On the Pi it is named docker-compose.yml so no extra flags are needed
+      # when running 'docker compose' commands.
+      copy:
+        src: ../docker/docker-compose.prod.yml
+        dest: /home/{{ ansible_user }}/homelab/docker-compose.yml
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0644"
+
+    # ── Stack Deployment ─────────────────────────────────────────────────────
+
+    - name: Check if .env file exists on the Pi
+      # We gate the pull+start on the .env being present so the playbook does
+      # not fail if you run it before setting up credentials on the Pi.
+      stat:
+        path: /home/{{ ansible_user }}/homelab/.env
+      register: env_file
+
+    - name: Warn if .env is missing
+      debug:
+        msg: >
+          No .env file found at ~/homelab/.env — skipping image pull and stack
+          start. Create the file on the Pi first, then re-run this playbook.
+      when: not env_file.stat.exists
+
+    - name: Pull latest images from GHCR
+      # Pulls all images declared in docker-compose.yml from the registry.
+      # Requires images to have been pushed by the GitHub Actions pipeline first.
+      shell: docker compose pull
+      args:
+        chdir: /home/{{ ansible_user }}/homelab
+      become_user: "{{ ansible_user }}"
+      when: env_file.stat.exists
+
+    - name: Start the stack
+      # -d runs containers in the background (detached mode).
+      # If containers are already running, this restarts only changed ones.
+      shell: docker compose up -d
+      args:
+        chdir: /home/{{ ansible_user }}/homelab
+      become_user: "{{ ansible_user }}"
+      when: env_file.stat.exists

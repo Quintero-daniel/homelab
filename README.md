@@ -82,6 +82,69 @@ npm run dev
 
 Frontend runs on `http://localhost:5173`. API calls to `/api` are proxied to the backend on port `8080`.
 
+## Running with Docker (local)
+
+Builds and runs the full stack (frontend + backend + database) as Docker containers on your machine.
+
+**1. Create the environment file:**
+```bash
+cp infra/docker/.env.example infra/docker/.env
+# Edit .env and fill in your database credentials
+```
+
+**2. Build and start all containers:**
+```bash
+podman-compose -f infra/docker/docker-compose.yml up --build
+```
+
+The app is served by Nginx at `http://localhost/`. The `--build` flag rebuilds images if source has changed; omit it on subsequent runs to skip the build.
+
+> **Why `npm install` instead of `npm ci` in the frontend Dockerfile?**
+> Vite 8 uses rolldown, a Rust-based bundler with platform-specific native binaries distributed as optional npm packages. A `package-lock.json` generated on macOS locks in the darwin binary — running `npm ci` inside an Alpine Linux container fails because the linux-arm64-musl binary is not in the lock file. `npm install` without the lock file resolves the correct binary for the current OS.
+
+## Pi Deployment (Ansible)
+
+The Ansible playbook provisions a fresh Raspberry Pi and deploys the stack. It installs Docker, sets up the app directory, copies the production compose file, and starts the containers.
+
+**Prerequisites:**
+- Raspbian installed on the Pi with SSH enabled
+- SSH key copied to the Pi: `ssh-copy-id acme@<pi-ip>`
+- Ansible installed on your Mac: `brew install ansible`
+
+**1. Update the inventory with the Pi's IP:**
+
+Edit `infra/ansible/inventory.ini` and set the correct IP address.
+
+**2. Test connectivity:**
+```bash
+ansible -i infra/ansible/inventory.ini acme -m ping
+```
+
+**3. Copy the environment file to the Pi:**
+```bash
+scp infra/docker/.env.example acme@<pi-ip>:~/homelab/.env
+ssh acme@<pi-ip> "nano ~/homelab/.env"  # fill in real credentials
+```
+
+**4. Run the playbook:**
+```bash
+ansible-playbook -i infra/ansible/inventory.ini infra/ansible/playbook.yml
+```
+
+The playbook skips the image pull and stack start if no `.env` is found on the Pi, and prints a warning. Once images are pushed to GHCR by the GitHub Actions pipeline, re-running the playbook will pull them and bring the stack up.
+
+> **Production vs local compose:**
+> `docker-compose.yml` builds images from local source (used in local dev and local Docker testing).
+> `docker-compose.prod.yml` pulls pre-built images from GHCR (used on the Pi via Ansible). Replace `YOUR_GITHUB_USERNAME` in that file with your actual GitHub username before deploying.
+
+## Accessing the app on the local network
+
+When running on the Pi, the app is reachable at `http://<pi-ip>/` from any device on the same network. To avoid typing the IP, options include:
+
+- **DHCP reservation** in your router — pins the Pi to a fixed IP so it never changes
+- **mDNS** — install `avahi-daemon` on the Pi; devices can reach it at `http://<hostname>.local/`
+- **Pi-hole** — local DNS resolver; define any custom domain (e.g. `http://homelab/`) and every device on the network picks it up automatically via the router's DNS setting
+
 ## Structure
 ```
 homelab/
@@ -89,6 +152,12 @@ homelab/
 ├── backend/
 ├── infra/
 │   ├── ansible/
+│   │   ├── inventory.ini     # Pi host and SSH user
+│   │   └── playbook.yml      # Provisioning + deployment playbook
 │   └── docker/
+│       ├── docker-compose.yml       # Local dev (builds from source)
+│       ├── docker-compose.prod.yml  # Pi deployment (pulls from GHCR)
+│       ├── .env.example             # Environment variable template
+│       └── .env                     # Local credentials (gitignored)
 └── .github/workflows/
 ```
