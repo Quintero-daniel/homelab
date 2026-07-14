@@ -63,7 +63,7 @@ Ingredients and nutritional factors are resolved by name (find-or-create) on eve
 **1. Start the database:**
 ```bash
 cd infra/docker
-docker compose up -d
+docker compose up -d db
 ```
 
 **2. Run the backend:**

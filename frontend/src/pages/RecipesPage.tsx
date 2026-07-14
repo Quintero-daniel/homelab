@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getRecipes, updateRecipe, deleteRecipe } from '../api/recipeApi'
+import { getRecipes, createRecipe, updateRecipe, deleteRecipe } from '../api/recipeApi'
 import type { Recipe } from '../api/recipeApi'
 import styles from './RecipesPage.module.css'
 
@@ -117,6 +117,7 @@ function RecipesPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<EditDraft | null>(null)
+  const [creating, setCreating] = useState(false)
   const keyCounter = useRef(0)
 
   function newKey() {
@@ -185,6 +186,34 @@ function RecipesPage() {
   function cancelEdit() {
     setEditingId(null)
     setEditDraft(null)
+  }
+
+  function startCreate() {
+    setCreating(true)
+    setEditingId(null)
+    setExpandedId(null)
+    setEditDraft({ name: '', description: '', rating: null, ingredients: [], nutritionalFactors: [], directions: [] })
+  }
+
+  function cancelCreate() {
+    setCreating(false)
+    setEditDraft(null)
+  }
+
+  async function saveCreate() {
+    if (!editDraft) return
+    if (!editDraft.name.trim()) { alert('Recipe name is required.'); return }
+    const blankBase: Recipe = { id: '', name: '', description: null, rating: null, pictureUrl: null, ingredients: [], nutritionalFactors: [], directions: [] }
+    const payload = buildPayload(blankBase, editDraft)
+    try {
+      const saved = await createRecipe(payload)
+      setRecipes((prev) => [saved, ...prev])
+      setCreating(false)
+      setEditDraft(null)
+      setExpandedId(saved.id)
+    } catch {
+      alert('Failed to create recipe.')
+    }
   }
 
   async function saveEdit(recipe: Recipe) {
@@ -261,14 +290,102 @@ function RecipesPage() {
     )
   }
 
+  // ── Form renderer ───────────────────────────────────────────────────────────
+  // Used for both create and edit — only the save/cancel handlers differ.
+
+  function renderFormBody(onSave: () => void, onCancel: () => void) {
+    if (!editDraft) return null
+    return (
+      <div className={styles.editForm}>
+        <div>
+          <p className={styles.fieldLabel}>Name</p>
+          <input className={styles.input} value={editDraft.name} onChange={(e) => setEditDraft((d) => d ? { ...d, name: e.target.value } : d)} />
+        </div>
+        <div>
+          <p className={styles.fieldLabel}>Description</p>
+          <textarea className={styles.textarea} value={editDraft.description} onChange={(e) => setEditDraft((d) => d ? { ...d, description: e.target.value } : d)} />
+        </div>
+        <div>
+          <p className={styles.fieldLabel}>Rating</p>
+          <div className={styles.starsEditable}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <span key={star} className={(editDraft.rating ?? 0) >= star ? styles.starEditFilled : styles.starEditEmpty} onClick={() => setEditDraft((d) => d ? { ...d, rating: star } : d)}>★</span>
+            ))}
+          </div>
+        </div>
+        <div className={styles.editCollectionsRow}>
+          <div className={styles.editCollection} style={{ flex: 1 }}>
+            <p className={styles.fieldLabel}>Nutrition</p>
+            {editDraft.nutritionalFactors.map((nf) => (
+              <div key={nf._key} className={styles.editItem}>
+                <div className={styles.editItemHeader}>
+                  <button className={styles.btnRemove} onClick={() => removeNutrition(nf._key)}>✕</button>
+                </div>
+                <label className={styles.editFieldLabel}>Factor name</label>
+                <input className={styles.input} value={nf.factorName} onChange={(e) => updateNutrition(nf._key, 'factorName', e.target.value)} />
+                <label className={styles.editFieldLabel}>Amount</label>
+                <input className={styles.input} value={nf.amount} onChange={(e) => updateNutrition(nf._key, 'amount', e.target.value)} />
+                <label className={styles.editFieldLabel}>Unit</label>
+                <input className={styles.input} value={nf.unit} onChange={(e) => updateNutrition(nf._key, 'unit', e.target.value)} />
+              </div>
+            ))}
+            <button className={styles.btnAdd} onClick={addNutrition}>+ Add</button>
+          </div>
+          <div className={styles.editCollection} style={{ flex: 2 }}>
+            <p className={styles.fieldLabel}>Ingredients</p>
+            {editDraft.ingredients.map((ing) => (
+              <div key={ing._key} className={styles.editItem}>
+                <div className={styles.editItemHeader}>
+                  <button className={styles.btnRemove} onClick={() => removeIngredient(ing._key)}>✕</button>
+                </div>
+                <label className={styles.editFieldLabel}>Ingredient name</label>
+                <input className={styles.input} value={ing.ingredientName} onChange={(e) => updateIngredient(ing._key, 'ingredientName', e.target.value)} />
+                <label className={styles.editFieldLabel}>Quantity</label>
+                <input className={styles.input} value={ing.quantity} onChange={(e) => updateIngredient(ing._key, 'quantity', e.target.value)} />
+                <label className={styles.editFieldLabel}>Unit</label>
+                <input className={styles.input} value={ing.unit} onChange={(e) => updateIngredient(ing._key, 'unit', e.target.value)} />
+                <label className={styles.editFieldLabel}>Notes</label>
+                <input className={styles.input} value={ing.notes} onChange={(e) => updateIngredient(ing._key, 'notes', e.target.value)} />
+              </div>
+            ))}
+            <button className={styles.btnAdd} onClick={addIngredient}>+ Add</button>
+          </div>
+          <div className={styles.editCollection} style={{ flex: 2 }}>
+            <p className={styles.fieldLabel}>Directions</p>
+            {editDraft.directions.map((dir, index) => (
+              <div key={dir._key} className={styles.editItem}>
+                <div className={styles.editItemRow}>
+                  <span className={styles.stepNumber}>{index + 1}.</span>
+                  <textarea className={`${styles.textarea} ${styles.textareaInline}`} placeholder="Describe this step…" value={dir.description} onChange={(e) => updateDirection(dir._key, e.target.value)} />
+                  <button className={styles.btnRemove} onClick={() => removeDirection(dir._key)}>✕</button>
+                </div>
+              </div>
+            ))}
+            <button className={styles.btnAdd} onClick={addDirection}>+ Add Step</button>
+          </div>
+        </div>
+        <div className={styles.editActions}>
+          <button className={styles.btnSave} onClick={onSave}>Save</button>
+          <button className={styles.btnCancel} onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    )
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className={styles.page}>
       <div className={styles.topBar}>
         <button className={styles.btn} onClick={handleRandomize}>🎲 Randomize Recipe</button>
-        <button className={styles.btn}>➕ Add New Recipe</button>
+        <button className={styles.btn} onClick={startCreate}>➕ Add New Recipe</button>
       </div>
+
+      {creating && (
+        <div className={styles.recipeDetail}>
+          {renderFormBody(saveCreate, cancelCreate)}
+        </div>
+      )}
 
       {loading && <p style={{ padding: '16px' }}>Loading...</p>}
       {error && <p style={{ padding: '16px', color: '#ef4444' }}>Error: {error}</p>}
@@ -291,139 +408,7 @@ function RecipesPage() {
                   {isOpen && (
                     <div className={styles.recipeDetail}>
                       {isEditing && editDraft ? (
-                        <div className={styles.editForm}>
-
-                          {/* ── Basic fields ── */}
-                          <div>
-                            <p className={styles.fieldLabel}>Name</p>
-                            <input
-                              className={styles.input}
-                              value={editDraft.name}
-                              onChange={(e) => setEditDraft((d) => d ? { ...d, name: e.target.value } : d)}
-                            />
-                          </div>
-                          <div>
-                            <p className={styles.fieldLabel}>Description</p>
-                            <textarea
-                              className={styles.textarea}
-                              value={editDraft.description}
-                              onChange={(e) => setEditDraft((d) => d ? { ...d, description: e.target.value } : d)}
-                            />
-                          </div>
-                          <div>
-                            <p className={styles.fieldLabel}>Rating</p>
-                            <div className={styles.starsEditable}>
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <span
-                                  key={star}
-                                  className={(editDraft.rating ?? 0) >= star ? styles.starEditFilled : styles.starEditEmpty}
-                                  onClick={() => setEditDraft((d) => d ? { ...d, rating: star } : d)}
-                                >
-                                  ★
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* ── Collections row ── */}
-                          <div className={styles.editCollectionsRow}>
-
-                            {/* Nutrition */}
-                            <div className={styles.editCollection} style={{ flex: 1 }}>
-                              <p className={styles.fieldLabel}>Nutrition</p>
-                              {editDraft.nutritionalFactors.map((nf) => (
-                                <div key={nf._key} className={styles.editItem}>
-                                  <div className={styles.editItemHeader}>
-                                    <button className={styles.btnRemove} onClick={() => removeNutrition(nf._key)}>✕</button>
-                                  </div>
-                                  <label className={styles.editFieldLabel}>Factor name</label>
-                                  <input
-                                    className={styles.input}
-                                    value={nf.factorName}
-                                    onChange={(e) => updateNutrition(nf._key, 'factorName', e.target.value)}
-                                  />
-                                  <label className={styles.editFieldLabel}>Amount</label>
-                                  <input
-                                    className={styles.input}
-                                    value={nf.amount}
-                                    onChange={(e) => updateNutrition(nf._key, 'amount', e.target.value)}
-                                  />
-                                  <label className={styles.editFieldLabel}>Unit</label>
-                                  <input
-                                    className={styles.input}
-                                    value={nf.unit}
-                                    onChange={(e) => updateNutrition(nf._key, 'unit', e.target.value)}
-                                  />
-                                </div>
-                              ))}
-                              <button className={styles.btnAdd} onClick={addNutrition}>+ Add</button>
-                            </div>
-
-                            {/* Ingredients */}
-                            <div className={styles.editCollection} style={{ flex: 2 }}>
-                              <p className={styles.fieldLabel}>Ingredients</p>
-                              {editDraft.ingredients.map((ing) => (
-                                <div key={ing._key} className={styles.editItem}>
-                                  <div className={styles.editItemHeader}>
-                                    <button className={styles.btnRemove} onClick={() => removeIngredient(ing._key)}>✕</button>
-                                  </div>
-                                  <label className={styles.editFieldLabel}>Ingredient name</label>
-                                  <input
-                                    className={styles.input}
-                                    value={ing.ingredientName}
-                                    onChange={(e) => updateIngredient(ing._key, 'ingredientName', e.target.value)}
-                                  />
-                                  <label className={styles.editFieldLabel}>Quantity</label>
-                                  <input
-                                    className={styles.input}
-                                    value={ing.quantity}
-                                    onChange={(e) => updateIngredient(ing._key, 'quantity', e.target.value)}
-                                  />
-                                  <label className={styles.editFieldLabel}>Unit</label>
-                                  <input
-                                    className={styles.input}
-                                    value={ing.unit}
-                                    onChange={(e) => updateIngredient(ing._key, 'unit', e.target.value)}
-                                  />
-                                  <label className={styles.editFieldLabel}>Notes</label>
-                                  <input
-                                    className={styles.input}
-                                    value={ing.notes}
-                                    onChange={(e) => updateIngredient(ing._key, 'notes', e.target.value)}
-                                  />
-                                </div>
-                              ))}
-                              <button className={styles.btnAdd} onClick={addIngredient}>+ Add</button>
-                            </div>
-
-                            {/* Directions */}
-                            <div className={styles.editCollection} style={{ flex: 2 }}>
-                              <p className={styles.fieldLabel}>Directions</p>
-                              {editDraft.directions.map((dir, index) => (
-                                <div key={dir._key} className={styles.editItem}>
-                                  <div className={styles.editItemRow}>
-                                    <span className={styles.stepNumber}>{index + 1}.</span>
-                                    <textarea
-                                      className={`${styles.textarea} ${styles.textareaInline}`}
-                                      placeholder="Describe this step…"
-                                      value={dir.description}
-                                      onChange={(e) => updateDirection(dir._key, e.target.value)}
-                                    />
-                                    <button className={styles.btnRemove} onClick={() => removeDirection(dir._key)}>✕</button>
-                                  </div>
-                                </div>
-                              ))}
-                              <button className={styles.btnAdd} onClick={addDirection}>+ Add Step</button>
-                            </div>
-
-                          </div>
-
-                          {/* ── Save / Cancel ── */}
-                          <div className={styles.editActions}>
-                            <button className={styles.btnSave} onClick={() => saveEdit(recipe)}>Save</button>
-                            <button className={styles.btnCancel} onClick={cancelEdit}>Cancel</button>
-                          </div>
-                        </div>
+                        renderFormBody(() => saveEdit(recipe), cancelEdit)
                       ) : (
                         <>
                           <div className={styles.detailActions}>
